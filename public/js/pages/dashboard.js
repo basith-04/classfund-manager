@@ -36,7 +36,13 @@ async function start() {
 
 //logout function 
 document.getElementById("logout-btn").addEventListener("click", () => {
-  window.location.href = "./index.html"
+  signOut(auth)
+    .then(() => {
+      window.location.href = "./index.html";
+    })
+    .catch((error) => {
+      console.error("Logout failed:", error);
+    });
 })
 
 
