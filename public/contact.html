@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Contact Class Fund Manager">
+    <title>Contact Us - Class Fund</title>
+    <link href="styles/style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        .legal-content {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+        .legal-content h1, .legal-content h2, .legal-content h3 {
+            color: var(--text-primary);
+            font-family: 'VT323', monospace;
+            text-shadow: 1px 1px 0 #000;
+        }
+        .legal-content h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        .legal-content h2 {
+            font-size: 2rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+        .legal-content p, .legal-content ul {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+        .legal-content ul {
+            padding-left: 2rem;
+        }
+        .contact-info {
+            background: rgba(245, 176, 65, 0.1);
+            border: 1px solid var(--accent);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+        .contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .contact-form input, .contact-form select, .contact-form textarea {
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text-primary);
+            font-family: inherit;
+        }
+        .contact-form button {
+            background: var(--accent);
+            color: #000;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 0.5rem;
+        }
+        .contact-form button:hover {
+            opacity: 0.9;
+        }
+        .response-time {
+            text-align: center;
+            font-style: italic;
+            color: var(--text-muted);
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <a href="/" id="header-name" style="text-decoration: none; color: inherit;">Class Fund Manager</a>
+    </nav>
+
+    <main class="container">
+        <div class="back-btn" onclick="window.history.back()">← Back</div>
+        
+        <div class="legal-content">
+            <h1>Contact Us</h1>
+
+            <div class="contact-info">
+                <h2>Official Channels</h2>
+                <p><strong>Platform Name:</strong> Class Fund Manager</p>
+                <p><strong>Official Email:</strong> classfundmanager@gmail.com</p>
+            </div>
+
+            <h2>Send us a Message</h2>
+            <p>If you need assistance with any of the following topics, please reach out to us:</p>
+            <ul>
+                <li>Payment Issues</li>
+                <li>Refund Requests</li>
+                <li>Account Problems</li>
+                <li>Contribution Questions</li>
+                <li>Technical Issues</li>
+            </ul>
+
+
+
+            <p class="response-time">Most inquiries are answered within 2–3 business days.</p>
+        </div>
+    </main>
+
+    <footer style="margin-top: auto; padding: 2rem; background: rgba(0, 0, 0, 0.85); border-top: 1px solid var(--border); text-align: center; font-size: 0.9rem; width: 100%; box-sizing: border-box;">
+        <div style="margin-bottom: 1rem; color: #94a3b8;">
+            &copy; 2026 Class Fund Manager. All rights reserved.
+        </div>
+        <div style="margin-bottom: 1rem; color: #94a3b8;">
+            <a href="/open-source.html" style="color: #94a3b8; text-decoration: none;">Open Source Project</a> &bull; MIT Licensed
+        </div>
+        <div style="display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap;">
+            <a href="/privacy-policy.html" style="color: #e2e8f0; text-decoration: none;">Privacy Policy</a>
+            <a href="/terms-and-conditions.html" style="color: #e2e8f0; text-decoration: none;">Terms & Conditions</a>
+            <a href="/refund-policy.html" style="color: #e2e8f0; text-decoration: none;">Refund Policy</a>
+            <a href="/contact.html" style="color: #e2e8f0; text-decoration: none;">Contact Us</a>
+            <a href="https://github.com/basith-04/classfund-manager" target="_blank" style="color: #e2e8f0; text-decoration: none;">GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>

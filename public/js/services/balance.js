@@ -1,39 +1,28 @@
 import {
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  serverTimestamp
+  doc,
+  getDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db } from "./firebase.js";
-import { get_total_expense } from "./expense.js";
 
-export async function find_balance() {
-  let totalCollected = await get_total_collected()
-  let totalExpense = await get_total_expense()
-
-  return totalCollected - totalExpense
-
-}
-
-async function get_total_collected() {
-  const expenseRef = collection(db, 'users')
-
+// Fetches a specific ledger (e.g. "global", or "program_XYZ")
+export async function getLedger(ledgerId = "global") {
   try {
-    const querySnapshot = await getDocs(expenseRef);
-    let total = 0
-    querySnapshot.forEach((doc) => {
-      const data = doc.data()
-      total += Number(data.totalPaid)
+    const docRef = doc(db, 'ledgers', ledgerId);
+    const docSnap = await getDoc(docRef);
 
-    })
-    return total
-
-
+    if (docSnap.exists()) {
+      return docSnap.data();
+    } else {
+      // Return zeroes if the ledger doesn't exist yet
+      return { totalContributions: 0, totalExpenditure: 0, balance: 0 };
+    }
   } catch (err) {
-      console.error(err)
+    console.error("Error fetching ledger: ", err);
+    return { totalContributions: 0, totalExpenditure: 0, balance: 0 };
   }
-
 }
 
+export async function find_balance(ledgerId = "global") {
+  const ledger = await getLedger(ledgerId);
+  return ledger.balance || 0;
+}

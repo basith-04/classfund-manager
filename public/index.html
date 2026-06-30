@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSE - B </title>
+    <title>Class Fund Manager</title>
     <link href="styles/style.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 </head>
@@ -12,21 +12,36 @@
         
         
         <div class="login-card">
-             <h2 class="title-shadow">Class Fund</h2>
+             <h2 class="title-shadow">Class Fund Manager</h2>
              <!-- <label for="user" >Roll Number</label> -->
               
               <div id="inner-card"> 
-             <input type="text" id="user"  placeholder="Roll Number">
+             <input type="text" id="user"  placeholder="Roll Number (First Login) or Email">
 
              <!-- <label for="pass" >Password</label> -->
              <input type="password" id="pass" placeholder="Password">
         <button type="submit" id="login-btn" class="login-btn">Login</button>
+        <span id="forgot-password" style="display: block; margin-top: 1rem; color: white; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); font-weight: bold; cursor: pointer; text-decoration: underline; font-size: 0.9rem;">Forgot Password?</span>
          </div>
 
         </div>
       
     </main>
     <script type="module" src="js/pages/login.js" ></script>
-    
+    <footer style="margin-top: auto; padding: 2rem; background: rgba(0, 0, 0, 0.85); border-top: 1px solid var(--border); text-align: center; font-size: 0.9rem; width: 100%; box-sizing: border-box;">
+        <div style="margin-bottom: 1rem; color: #94a3b8;">
+            &copy; 2026 Class Fund Manager. All rights reserved.
+        </div>
+        <div style="margin-bottom: 1rem; color: #94a3b8;">
+            <a href="/open-source.html" style="color: #94a3b8; text-decoration: none;">Open Source Project</a> &bull; MIT Licensed
+        </div>
+        <div style="display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap;">
+            <a href="/privacy-policy.html" style="color: #e2e8f0; text-decoration: none;">Privacy Policy</a>
+            <a href="/terms-and-conditions.html" style="color: #e2e8f0; text-decoration: none;">Terms & Conditions</a>
+            <a href="/refund-policy.html" style="color: #e2e8f0; text-decoration: none;">Refund Policy</a>
+            <a href="/contact.html" style="color: #e2e8f0; text-decoration: none;">Contact Us</a>
+            <a href="https://github.com/basith-04/classfund-manager" target="_blank" style="color: #e2e8f0; text-decoration: none;">GitHub</a>
+        </div>
+    </footer>
 </body>
 </html>

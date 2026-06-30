@@ -9,6 +9,7 @@
       --border: #e2e8f0;
       --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
       --radius: 12px;
+      --primary-hover: #4338ca;
   }
 
   * {
@@ -220,6 +221,16 @@
   .btn-confirm {
       background: #ef4444;
       color: white;
+  }
+
+  .btn-primary {
+      background: var(--primary);
+      color: white;
+      transition: background 0.2s;
+  }
+  
+  .btn-primary:hover {
+      background: var(--primary-hover); /* Slightly darker indigo */
   }
 
   @media (max-width: 768px) {

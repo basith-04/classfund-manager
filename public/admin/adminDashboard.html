@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - CSE-B Class Fund</title>
+    <title>Admin - Class Fund Manager</title>
     <link href="../styles/admin.css" rel="stylesheet">
 </head>
 <body>
@@ -11,9 +11,12 @@
     <div class="container">
         <header>
             <h1>Admin Dashboard</h1>
-            <a href="transactions.html"> 
-                <button onclick="location.reload()" style="background: none; border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">transactions</button>
-            </a>
+            <div style="display: flex; gap: 1rem;">
+                <a href="transactions.html"> 
+                    <button style="background: none; border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Transactions</button>
+                </a>
+                <button id="logout-btn" style="background: #f44336; color: #fff; padding: 0.5rem 1rem; border-radius: 6px; border: none; font-weight: bold; cursor: pointer;">Logout</button>
+            </div>
         </header>
 
         <div class="stats">
@@ -31,16 +34,86 @@
             </div>
         </div>
 
-        <div class="filter-section">
+        <div class="admin-sections" style="display: flex; gap: 2rem; margin-top: 2rem; flex-wrap: wrap;">
+            <!-- Programs Management Section -->
+            <div class="programs-section" style="flex: 1; min-width: 300px; background: var(--card-bg); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h2 style="font-family: 'VT323', monospace; font-size: 1.5rem;">Programs Management</h2>
+                    <button id="create-program-btn" style="background: var(--accent); color: #000; padding: 0.5rem 1rem; border-radius: 6px; border: none; font-weight: bold; cursor: pointer;">+ New Program</button>
+                </div>
+                <div id="admin-programs-list" style="display: flex; flex-direction: column; gap: 1rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">
+                    <!-- Program items injected here -->
+                </div>
+            </div>
+
+            <!-- Global Settings Section -->
+            <div class="settings-section" style="flex: 1; min-width: 300px; background: var(--card-bg); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+                <h2 style="font-family: 'VT323', monospace; font-size: 1.5rem; margin-bottom: 1rem;">Global Funding Settings</h2>
+                <form id="global-settings-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem;">Suggested Contribution (₹)</label>
+                        <input type="number" id="setting-suggested" required style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text-primary);">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 0.5rem;">Minimum Contribution (₹)</label>
+                        <input type="number" id="setting-minimum" required style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text-primary);">
+                    </div>
+                    <label style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" id="setting-any-amount"> Allow Any Amount
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" id="setting-enabled"> Contributions Enabled
+                    </label>
+                    <button type="submit" style="background: transparent; color: var(--text-primary); border: 1px solid var(--border); padding: 0.75rem; border-radius: 6px; cursor: pointer;">Save Settings</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Program Creation Modal -->
+        <div id="program-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
+            <div style="background: #ffffff; padding: 2rem; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid #e0e0e0; color: #333333; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+                <h2 style="margin-bottom: 1rem; color: #1a1a1a; font-family: 'VT323', monospace; font-size: 1.8rem;">Create Program</h2>
+                <form id="program-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <input type="text" id="prog-name" placeholder="Program Name" required style="padding: 0.75rem; border-radius: 6px; border: 1px solid #cccccc; background: #fafafa; color: #333333; font-size: 1rem;">
+                    <textarea id="prog-desc" placeholder="Description" rows="3" style="padding: 0.75rem; border-radius: 6px; border: 1px solid #cccccc; background: #fafafa; color: #333333; font-size: 1rem;"></textarea>
+                    <input type="number" id="prog-target" placeholder="Target Amount (₹)" style="padding: 0.75rem; border-radius: 6px; border: 1px solid #cccccc; background: #fafafa; color: #333333; font-size: 1rem;">
+                    
+                    <select id="prog-target-type" style="padding: 0.75rem; border-radius: 6px; border: 1px solid #cccccc; background: #fafafa; color: #333333; font-size: 1rem;">
+                        <option value="global">Global Target (Split evenly)</option>
+                        <option value="per_student">Per Student Target</option>
+                    </select>
+
+                    <label style="display: flex; align-items: center; gap: 0.5rem; color: #333333; font-size: 1rem; font-weight: 500;">
+                        <input type="checkbox" id="prog-any-amount" checked> Allow Any Amount
+                    </label>
+
+                    <input type="number" id="prog-min-amount" placeholder="Min Amount (₹)" style="padding: 0.75rem; border-radius: 6px; border: 1px solid #cccccc; background: #fafafa; color: #333333; font-size: 1rem;">
+                    
+                    <select id="prog-status" style="padding: 0.75rem; border-radius: 6px; border: 1px solid #cccccc; background: #fafafa; color: #333333; font-size: 1rem;">
+                        <option value="Active">Active</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button type="submit" style="flex: 1; background: #f5b041; color: #1a1a1a; border: none; padding: 0.75rem; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem; box-shadow: 0 2px 4px rgba(245, 176, 65, 0.3);">Save</button>
+                        <button type="button" id="prog-cancel" style="flex: 1; background: #f0f0f0; border: 1px solid #cccccc; color: #555555; padding: 0.75rem; border-radius: 6px; cursor: pointer; font-size: 1rem; font-weight: 500;">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="filter-section" style="margin-top: 2rem;">
             <div class="filter-header">
                 <div class="input-group">
                     <label for="min-amount">Set Min Amount:</label>
                     <input type="number" id="min-amount" value="0">
-                    <button id="filter-btn" class="fetch">fetch</button>
+                    <button id="filter-btn" class="fetch" style="background: white; border: 1px solid var(--border); color: var(--text-main); padding: 0.75rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Fetch</button>
                 </div>
                 <div id="defaulter-count" class="count-badge"><span id="count-below">0</span> Students below target</div>
             </div>
-            <p style="color: var(--text-muted); font-size: 0.875rem;">Showing list of students who have paid less than the required amount.</p>
+            <p style="color: var(--text-muted); font-size: 0.875rem;">Showing list of students who have paid less than the required amount globally.</p>
         </div>
 
         <div class="table-container">
@@ -62,5 +135,6 @@
        
         
     </script>
+
 </body>
 </html>

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSE - B </title>
+    <title>Class Fund Manager</title>
     <link href="styles/style.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
@@ -13,32 +13,87 @@
 <body>
 
     <nav class="nav">
-        <div id="header-name">CSE - B </div>
-        <button id="logout-btn" class="logout-btn">Logout</button>
+        <div id="header-name">Class Fund Manager</div>
+        <div style="display: flex; gap: 1rem;">
+            <button id="settings-btn" class="logout-btn" style="background: transparent; border: 1px solid var(--border); color: var(--text-primary);">Settings</button>
+            <button id="logout-btn" class="logout-btn">Logout</button>
+        </div>
     </nav>
 
     <button class="pay-btn" id="pay-btn">Pay</button>
-    <div class="modal-overlay " id="modalOverlay">
-        <div id="payment-modal">
-            <h2>Wait a second! </h2>
+    <div class="modal-overlay" id="modalOverlay">
+        <div id="payment-modal" style="background: var(--card-bg); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); max-width: 400px; width: 90%; text-align: center;">
+            <h2 style="margin-bottom: 1rem;">Make a Contribution</h2>
+            
+            <form id="payment-form" style="display: flex; flex-direction: column; gap: 1rem; text-align: left;">
+                <div>
+                    <label for="program-select" style="font-size: 0.9rem; color: var(--text-muted);">Select Program / Fund</label>
+                    <select id="program-select" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-primary); margin-top: 0.25rem;">
+                        <option value="global">Global Class Fund</option>
+                        <!-- Active programs will be injected here -->
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="payment-amount" id="payment-amount-label" style="font-size: 0.9rem; color: var(--text-muted);">Amount (₹)</label>
+                    <input type="number" id="payment-amount" min="1" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-primary); margin-top: 0.25rem;">
+                    
+                    <div id="fixed-amount-display" style="display: none; width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--accent); background: rgba(245, 176, 65, 0.1); color: var(--text-primary); margin-top: 0.25rem; font-weight: bold; font-size: 1.2rem; text-align: center;">
+                        ₹<span id="fixed-amount-value"></span>
+                    </div>
+                    
+                    <small id="amount-hint" style="color: var(--text-muted); display: block; margin-top: 0.25rem; font-size: 0.8rem;"></small>
+                </div>
 
-            <p>Are you ready to pay?</p>
+                <div class="warning-text" style="font-size: 0.85rem; margin-top: 0.5rem;">
+                    Please <strong>only</strong> click Proceed if you are ready to complete the payment.
+                </div>
 
-            <div class="warning-text">
-                Please <strong>only</strong> click Proceed if you are actually going to make the payment. This helps me
-                keep the transaction records clean!
-            </div>
+                <button id="proceedBtn" type="submit" style="background: var(--accent); color: #000; padding: 0.75rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 0.5rem;">Proceed</button>
+            </form>
 
-            <button id="proceedBtn" type="button">Proceed</button>
-
-            <span class="cancel-link" id="cancel-link">Maybe later</span>
+            <span class="cancel-link" id="cancel-link" style="display: block; margin-top: 1rem; cursor: pointer;">Maybe later</span>
         </div>
     </div>
 
+    <!-- First Login Setup Modal -->
+    <div class="modal-overlay" id="setupModalOverlay" style="background: rgba(0, 0, 0, 0.85); z-index: 1000;">
+        <div id="setup-modal" style="background: var(--card-bg); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); max-width: 400px; width: 90%; text-align: center;">
+            <h2 style="margin-bottom: 1rem; color: var(--text-primary);">Account Setup</h2>
+            <p style="margin-bottom: 1.5rem; font-size: 0.9rem; color: var(--text-muted); text-align: left;">
+                For privacy reasons and to enable password recovery, please link a real email address to your account and change your default password.<br><br>
+                <strong style="color: var(--accent);">Note: You will use this real email for all future logins.</strong>
+            </p>
+            
+            <form id="setup-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                <input type="email" id="setup-email" placeholder="Real Email Address" required style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-primary);">
+                <input type="password" id="setup-current-pass" placeholder="Current Password" required style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-primary);">
+                <input type="password" id="setup-new-pass" placeholder="New Password (min 6 chars)" required minlength="6" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-primary);">
+                <input type="password" id="setup-confirm-pass" placeholder="Confirm New Password" required minlength="6" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-primary);">
+                
+                <button type="submit" id="setup-save-btn" style="background: var(--accent); color: #000; padding: 0.75rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 0.5rem;">Save & Continue</button>
+            </form>
+            
+            <span class="cancel-link" id="setup-quit-link" style="display: block; margin-top: 1rem; cursor: pointer;">Quit (Logout)</span>
+        </div>
+    </div>
 
-
-
-
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModalOverlay" style="background: rgba(0, 0, 0, 0.85); z-index: 1000;">
+        <div id="settings-modal" style="background: var(--card-bg); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); max-width: 400px; width: 90%; text-align: center;">
+            <h2 style="margin-bottom: 1rem; color: var(--text-primary);">Change Password</h2>
+            
+            <form id="settings-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                <input type="password" id="settings-current-pass" placeholder="Current Password" required style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-primary);">
+                <input type="password" id="settings-new-pass" placeholder="New Password (min 6 chars)" required minlength="6" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-primary);">
+                <input type="password" id="settings-confirm-pass" placeholder="Confirm New Password" required minlength="6" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-primary);">
+                
+                <button type="submit" id="settings-save-btn" style="background: var(--accent); color: #000; padding: 0.75rem; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 0.5rem;">Update Password</button>
+            </form>
+            
+            <span class="cancel-link" id="settings-cancel-link" style="display: block; margin-top: 1rem; cursor: pointer;">Cancel</span>
+        </div>
+    </div>
 
     <section id="home-page" class="dashboard">
         <div class="dashboard-header">
@@ -47,18 +102,22 @@
         </div>
         <div class="cards-grid">
             <div class="card" id="classFund-card">
-
                 <h3>Class Fund</h3>
                 <p>Balance <span id="total-balance">0</span> </p>
                 <small>View All expenses</small>
-
             </div>
-            <div class="card">
+            <div class="card" id="myPayments-card">
                 <h3>My payments</h3>
                 <p>Total Paid: <span id="user-total">0</span></p>
                 <small>View All payments</small>
             </div>
-
+        </div>
+        
+        <div style="margin-top: 2rem; width: 100%;">
+            <h2 style="margin-bottom: 1rem; color: #f5b041; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; font-family: 'VT323', monospace; font-size: 2rem; text-align: center;">Active Programs</h2>
+            <div class="cards-grid" id="programs-grid">
+                <!-- Programs will be injected here -->
+            </div>
         </div>
     </section>
     <section id="class-fund-page" class="container hidden">
@@ -79,10 +138,32 @@
             </table>
         </div>
     </section>
+    <section id="my-payments-page" class="container hidden">
+        <div class="back-btn" id='my-payments-back-btn'>← Back to Dashboard</div>
+        <h1 class="table-head">My Payments</h1>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Order ID</th>
+                        <th>Program</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="my-payments-table">
+
+                </tbody>
+            </table>
+        </div>
+    </section>
     <script src="js/pages/dashboard.js" type="module">
 
 
     </script>
+
+
 
 </body>
 

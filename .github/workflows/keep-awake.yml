@@ -1,0 +1,13 @@
+name: Keep Render Awake
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    if: false # <--- Add this line to disable execution
+    steps:
+      - name: Ping Render Backend
+        run: curl -s https://YOUR_BACKEND_URL/hello > /   

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: classfund-backend
+    runtime: node
+    rootDir: functions
+    healthCheckPath: /health
+    buildCommand: npm install --legacy-peer-deps
+    startCommand: node index.js
+    envVars:
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false

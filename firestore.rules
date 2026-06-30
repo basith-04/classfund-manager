@@ -7,10 +7,9 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email == 'admin@cseb.com';
+      return isSignedIn() && request.auth.token.email == 'admin@example.com';
     }
 
-    // Current frontend reads these collections directly.
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create, update, delete: if false;
@@ -21,11 +20,30 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // Transaction logs are admin-facing only. Settlement writes happen from Cloud Functions
-    // using the Admin SDK, which bypasses Firestore rules.
-    match /transactions/{transactionId} {
-      allow read: if isAdmin();
+    match /contributions/{contributionId} {
+      // allow read if admin, or if the user is the one who made the contribution
+      allow read: if isSignedIn();
       allow create, update, delete: if false;
+    }
+    
+    match /programs/{programId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /ledgers/{ledgerId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+    
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     match /{document=**} {

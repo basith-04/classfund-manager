@@ -4,7 +4,10 @@ node_modules/
 npm-debug.log*
 
 # Firebase admin credentials
-serviceAccount.json
+*service*account*.json
+
+# Firebase auto-generated
+.firebase/
 
 # Environment variables
 .env
