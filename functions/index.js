@@ -3,10 +3,8 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { onRequest } from "firebase-functions/v2/https";
 import express from "express";
 import cors from "cors";
-import Razorpay from "razorpay";
 import crypto from "crypto";
 import dotenv from "dotenv";
-import { verifyToken } from "./middleware/auth.js";
 dotenv.config(); // Load environment variables from .env file
 
 const app = express();
@@ -17,110 +15,140 @@ app.use(express.json());
 initializeApp();
 const db = getFirestore()
 
-const razorpay = new Razorpay({
-  // If process.env is missing during deployment, use a placeholder string so it doesn't crash
-  key_id: process.env.RAZORPAY_KEY_ID || "deployment_placeholder",
-  key_secret: process.env.RAZORPAY_KEY_SECRET || "deployment_placeholder"
-});
-
 app.get("/hello", (req, res) => {
   res.send("Hello, World!");
 });
 
-app.post("/create-order", verifyToken, async (req, res) => {
-  const { rollNo } = req.body;
-  if(req.roll_no !== rollNo){
-    return res.status(403).json({ error: "Unauthorized: Roll number mismatch" });
-  }
-  try {
-    // The class fund contribution is fixed at ₹20 for this app.
-    const amountRupees = 20;
-    const amountPaise = amountRupees * 100;
-    const options = {
-      amount: amountPaise,
-      currency: "INR",
-    };
-    
-    const order = await razorpay.orders.create(options);
+// --- Razorpay Webhook ---
+// Razorpay sends a raw JSON body with an X-Razorpay-Signature header.
+// We MUST use express.raw() here so the body is available as a Buffer for
+// signature verification. The global express.json() middleware is fine for
+// every other route because those are called from the frontend.
+app.post(
+  "/razory-pay",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-    await db.collection("transactions").doc(order.id).set({
-      rollNo,
-      status: "pending",
-      orderId: order.id,
-      amount: amountRupees,
-      createdAt: FieldValue.serverTimestamp()
-    });
+    // ── 1. Signature verification ─────────────────────────────────────────
+    const receivedSignature = req.headers["x-razorpay-signature"];
+    if (!receivedSignature || !webhookSecret) {
+      console.error("Webhook: missing signature header or webhook secret.");
+      return res.status(400).json({ error: "Bad request" });
+    }
 
-    res.status(200).json({ orderId: order.id, amount: amountPaise });
-    
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
+    const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
 
-app.post('/verify-payment', async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-  const body = razorpay_order_id + "|" + razorpay_payment_id;
-
-  try {
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-      .update(body.toString())
-      .digest('hex');
+      .createHmac("sha256", webhookSecret)
+      .update(rawBody)
+      .digest("hex");
 
-    if (expectedSignature === razorpay_signature) {
-      const transactionRef = db.collection("transactions").doc(razorpay_order_id);
-      const result = await db.runTransaction(async (transaction) => {
-        const transactionSnap = await transaction.get(transactionRef);
+    if (expectedSignature !== receivedSignature) {
+      console.error("Webhook: signature mismatch — possible spoofed request.");
+      return res.status(400).json({ error: "Invalid signature" });
+    }
 
-        if (!transactionSnap.exists) {
-          return { status: "not_found" };
+    // ── 2. Parse payload ──────────────────────────────────────────────────
+    let payload;
+    try {
+      payload = JSON.parse(rawBody.toString());
+    } catch (e) {
+      console.error("Webhook: failed to parse JSON body", e);
+      return res.status(400).json({ error: "Invalid JSON" });
+    }
+
+    console.log("Razorpay webhook payload:", JSON.stringify(payload, null, 2));
+
+    // ── 3. Only handle payment.captured events ────────────────────────────
+    if (payload.event !== "payment.captured") {
+      // Acknowledge other events so Razorpay doesn't keep retrying them.
+      return res.status(200).json({ status: "ignored", event: payload.event });
+    }
+
+    const paymentEntity = payload?.payload?.payment?.entity;
+    if (!paymentEntity) {
+      console.error("Webhook: payment entity missing from payload.");
+      return res.status(400).json({ error: "Malformed payload" });
+    }
+
+    const {
+      id: paymentId,
+      order_id: orderId,
+      amount,          // in paise
+      notes,
+    } = paymentEntity;
+
+    const rollNo = notes?.roll_no ?? notes?.rollNo;
+
+    if (!rollNo) {
+      console.error("Webhook: roll_no missing from payment notes.", notes);
+      return res.status(400).json({ error: "roll_no not found in payment notes" });
+    }
+
+    const amountRupees = amount / 100;
+
+    // ── 4. Firestore transaction — idempotent update ──────────────────────
+    try {
+      const transactionRef = db.collection("transactions").doc(orderId ?? paymentId);
+
+      await db.runTransaction(async (t) => {
+        // ── 4a. Check if we already processed this payment ────────────────
+        const txSnap = await t.get(transactionRef);
+        if (txSnap.exists && txSnap.data().status === "success") {
+          console.log(`Webhook: payment ${paymentId} already processed, skipping.`);
+          return; // idempotent — do nothing
         }
 
-        const transactionData = transactionSnap.data();
-
-        if (transactionData.status !== "pending") {
-          return { status: "already_processed" };
-        }
-
+        // ── 4b. Find the user by roll_no ──────────────────────────────────
         const usersQuery = db.collection("users")
-          .where("rollNo", "==", transactionData.rollNo)
+          .where("rollNo", "==", Number(rollNo))
           .limit(1);
-        const usersSnapshot = await transaction.get(usersQuery);
+        const usersSnap = await t.get(usersQuery);
 
-        if (usersSnapshot.empty) {
-          throw new Error(`No user found for rollNo: ${transactionData.rollNo}`);
+        if (usersSnap.empty) {
+          throw new Error(`Webhook: no user found for rollNo: ${rollNo}`);
         }
 
-        const userRef = usersSnapshot.docs[0].ref;
-        transaction.update(transactionRef, {
-          status: "success",
-          paymentId: razorpay_payment_id,
-        });
-        transaction.update(userRef, {
-          totalPaid: FieldValue.increment(transactionData.amount)
-        });
+        const userRef = usersSnap.docs[0].ref;
 
-        return { status: "success" };
+        // ── 4c. Write / update transaction doc ───────────────────────────
+        if (txSnap.exists) {
+          // Payment already partially recorded — update status and paymentId
+          t.update(transactionRef, {
+            status: "success",
+            paymentId,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } else {
+          // Fresh webhook-only transaction — create the doc from scratch
+          t.set(transactionRef, {
+            rollNo: String(rollNo),
+            orderId: orderId ?? null,
+            paymentId,
+            amount: amountRupees,
+            status: "success",
+            source: "webhook",
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+
+        // ── 4d. Increment user's totalPaid ────────────────────────────────
+        t.update(userRef, {
+          totalPaid: FieldValue.increment(amountRupees),
+        });
       });
 
-      if (result.status === "success") {
-        return res.status(200).json({ status: "success", message: "Payment verified successfully" });
-      }
+      console.log(`Webhook: successfully processed payment ${paymentId} for rollNo ${rollNo}`);
+      return res.status(200).json({ status: "success" });
 
-      if (result.status === "already_processed") {
-        return res.status(200).json({ status: "success", message: "Payment already verified" });
-      }
-
-      return res.status(404).json({ status: "failure", message: "Transaction not found" });
-    } else {
-      res.status(400).json({ status: "failure", message: "Invalid signature" });
+    } catch (error) {
+      console.error("Webhook: error processing payment:", error);
+      // Return 500 so Razorpay retries the webhook
+      return res.status(500).json({ error: "Internal Server Error" });
     }
-  } catch (error) {
-    console.error("Verification error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
   }
-});
+);
 
 export const api = onRequest({cors: true}, app);
