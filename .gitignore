@@ -1,8 +1,11 @@
 firebase.js
 # Node.js
 node_modules/
-npm-debug.log*
+*.local
 
+npm-debug.log*
+firebase-debug.log
+functions/firebase-debug.log
 # Firebase admin credentials
 serviceAccount.json
 

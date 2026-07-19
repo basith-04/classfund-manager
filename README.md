@@ -50,39 +50,62 @@ This project centralizes the entire process into a single web application where 
 | Frontend       | HTML, CSS, Vanilla JavaScript |
 | Authentication | Firebase Authentication       |
 | Database       | Cloud Firestore               |
-| Payments       | Razorpay Checkout             |
+| Payments       | Razorpay Payment Button       |
 | Backend        | Firebase Cloud Functions      |
 | Hosting        | Firebase Hosting              |
 
 ---
 
+## Why Razorpay Payment Button (not the full API)
+
+Razorpay's standard API (Checkout + Orders API) requires a business account and formal verification — not practical for a class project. The **Razorpay Payment Button** is available to anyone with a basic Razorpay account, created directly from the dashboard with no approval process.
+
+This project is built around that constraint: the frontend embeds a Payment Button, and a Cloud Function webhook handles settlement on the backend. No Razorpay API keys are needed anywhere in the codebase.
+
+---
+
 ## Architecture
 
-```text
+```
 Student
    │
    ▼
-Firebase Auth
+Firebase Auth (roll-number-based login)
    │
    ▼
 Frontend (HTML/CSS/JS)
    │
-   ├── Firestore Reads
+   ├── Firestore Reads (balance, expenses, payment status)
    │
-   └── Payment Request
+   └── Razorpay Payment Button (embedded in dashboard)
            │
            ▼
-Firebase Cloud Function
+       Razorpay handles the entire checkout flow
+           │  student's roll number is passed as a Note on the button
+           ▼
+   Webhook → POST /razory-pay (Cloud Function)
            │
            ▼
-      Razorpay
+   HMAC-SHA256 signature verified
            │
            ▼
- Payment Verification
-           │
-           ▼
-Firestore Transaction
+   Firestore transaction:
+   - writes transaction doc
+   - increments user.totalPaid
+   (idempotent — replaying the same event is safe)
 ```
+
+---
+
+## Payment Flow
+
+1. Student logs in and clicks **Pay** on the dashboard
+2. The embedded Razorpay Payment Button opens Razorpay's hosted checkout
+3. Student completes the payment on Razorpay's side
+4. Razorpay fires a `payment.captured` webhook to the Cloud Function
+5. The Cloud Function verifies the request signature, then updates Firestore atomically
+
+No payment data passes through the frontend after the button is clicked — Razorpay handles everything and notifies the backend directly.
 
 ---
 
@@ -90,38 +113,29 @@ Firestore Transaction
 
 ### Authentication
 
-Students authenticate through Firebase Authentication using a roll-number-based email pattern.
+Students authenticate through Firebase Authentication using a roll-number-based email pattern:
 
-Example:
-
-```text
+```
 22bcs001@cseb.com
 ```
 
-### Payment Security
+### Webhook Security
 
-Payments are not trusted from the frontend.
-
-The backend:
-
-1. Creates Razorpay orders
-2. Verifies Razorpay signatures
-3. Uses Firestore transactions for settlement
-4. Updates payment records only after verification
-
-### Firestore Access
-
-* Students can access only data required for the application flow
-* Transaction records cannot be modified from the client
-* Administrative transaction views are restricted to:
-
-```text
-admin@cseb.com
-```
+Every incoming webhook request is verified using HMAC-SHA256 against the raw request body before any processing. Requests with a missing or mismatched `X-Razorpay-Signature` header are rejected immediately.
 
 ### Idempotency
 
-Payment settlement is protected against duplicate processing through Firestore transaction-based guards.
+The webhook handler checks whether a payment has already been settled before writing to Firestore. Re-delivering the same event is safe and produces no duplicate records.
+
+### Firestore Access
+
+* Students can only read data required for the application flow
+* Transaction records cannot be modified from the client
+* Administrative views are restricted to:
+
+```
+admin@cseb.com
+```
 
 ---
 
@@ -129,20 +143,16 @@ Payment settlement is protected against duplicate processing through Firestore t
 
 ### users
 
-Stores student information.
-
 ```javascript
 {
   uid,
-  rollNo,
+  rollNo,    // Number — must match the roll_no Note set on the Payment Button
   name,
-  totalPaid
+  totalPaid  // Incremented by the webhook on each successful payment
 }
 ```
 
 ### expenses
-
-Stores class expenditure records.
 
 ```javascript
 {
@@ -155,15 +165,16 @@ Stores class expenditure records.
 
 ### transactions
 
-Stores payment lifecycle information.
-
 ```javascript
 {
   orderId,
   paymentId,
-  status,
+  rollNo,
   amount,
-  createdAt
+  status,    // "success"
+  source,    // "webhook"
+  createdAt,
+  updatedAt
 }
 ```
 
@@ -171,69 +182,125 @@ Stores payment lifecycle information.
 
 ## Project Structure
 
-```text
+```
 public/
 ├── index.html
-├── dashboard.html
+├── dashboard.html          ← Razorpay Payment Button lives here
 ├── admin/
 │   ├── adminDashboard.html
 │   ├── transactions.html
 │   └── scripts/
+│       ├── adminDashboard.js
+│       └── transactions.js
 ├── js/
 │   ├── pages/
+│   │   ├── dashboard.js
+│   │   └── login.js
 │   ├── services/
+│   │   ├── firebase.js
+│   │   ├── balance.js
+│   │   ├── expense.js
+│   │   └── users.js
 │   └── utils/
+│       ├── navigations.js
+│       └── startMusic.js
 └── styles/
 
 functions/
-├── index.js
-└── middleware/
+├── index.js     ← Webhook handler (POST /razory-pay)
+└── package.json
 ```
 
 ---
 
-## Local Development
+## Setup Guide
 
 ### Prerequisites
 
 * Node.js
-* Firebase CLI
-* Firebase Project
-* Razorpay Account
+* Firebase CLI (`npm install -g firebase-tools`)
+* A Firebase project
+* A Razorpay account (free, no business verification needed)
 
-### Clone
+### 1. Clone the repo
 
 ```bash
 git clone <repository-url>
 cd class-fund-manager
 ```
 
-### Install Functions Dependencies
+### 2. Install Cloud Functions dependencies
 
 ```bash
 cd functions
 npm install
 ```
 
-### Configure Firebase
+### 3. Configure Firebase
 
-Create the Firebase configuration inside the frontend application.
+Add your Firebase project config to `public/js/services/firebase.js`:
 
-### Configure Razorpay Secrets
-
-```bash
-firebase functions:config:set \
-razorpay.key_id="YOUR_KEY_ID" \
-razorpay.key_secret="YOUR_KEY_SECRET"
+```javascript
+const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+  // ...
+};
 ```
 
-### Run Locally
+### 4. Create a Razorpay Payment Button
+
+1. Log in to the [Razorpay Dashboard](https://dashboard.razorpay.com)
+2. Go to **Payment Buttons** → **Create Button**
+3. Set the amount to ₹20 (or your fixed contribution amount)
+4. Under **Notes**, add a field named `roll_no` — this is how the webhook identifies which student paid
+5. Copy the generated `data-payment_button_id`
+6. Paste it into `public/dashboard.html`:
+
+```html
+<form>
+  <script
+    src="https://checkout.razorpay.com/v1/payment-button.js"
+    data-payment_button_id="YOUR_BUTTON_ID"
+    async>
+  </script>
+</form>
+```
+
+### 5. Register the webhook
+
+1. In the Razorpay Dashboard, go to **Settings → Webhooks → Add New Webhook**
+2. Set the URL to your deployed Cloud Function:
+   ```
+   https://<region>-<project>.cloudfunctions.net/api/razory-pay
+   ```
+3. Subscribe to the `payment.captured` event
+4. Copy the **Webhook Secret** Razorpay generates
+
+### 6. Configure the webhook secret
+
+For local development, create `functions/.env`:
+
+```env
+RAZORPAY_WEBHOOK_SECRET=your_secret_here
+```
+
+For production:
+
+```bash
+firebase functions:secrets:set RAZORPAY_WEBHOOK_SECRET
+```
+
+### 7. Run locally
 
 ```bash
 firebase emulators:start
 ```
 
-### Deploy
+> **Webhook testing:** Razorpay needs to reach your local machine to deliver webhook events. Use [ngrok](https://ngrok.com) to expose your local emulator and temporarily update the webhook URL in the Razorpay dashboard to the ngrok tunnel URL.
+
+### 8. Deploy
 
 ```bash
 firebase deploy
@@ -245,38 +312,21 @@ firebase deploy
 
 ### Vanilla JavaScript
 
-The project intentionally avoids frontend frameworks.
-
-For a small internal application:
-
-* Faster development
-* No build pipeline
-* Minimal dependencies
-* Easier maintenance
+The project intentionally avoids frontend frameworks. For a small internal tool this means faster development, no build pipeline, minimal dependencies, and easier long-term maintenance.
 
 ### Firebase
 
-Firebase provides:
-
-* Authentication
-* Database
-* Hosting
-* Serverless backend
-
-without requiring server management.
+Firebase provides authentication, database, hosting, and serverless compute without requiring any server management.
 
 ### Fixed Contribution Amount
 
-The application collects a fixed ₹20 contribution.
-
-The amount is enforced by the backend rather than trusted from the frontend.
+The ₹20 amount is configured on the Payment Button in the Razorpay dashboard, not in frontend code. This means the amount cannot be tampered with from the browser.
 
 ---
 
 ## Future Improvements
 
-- Enhanced admin panel with additional management features (the current version intentionally focuses on the core payment workflow)
-- Razorpay webhook integration for additional payment reliability and reconciliation
+- Enhanced admin panel with additional management features
 - Audit logs for administrative actions and expense tracking
 - Analytics dashboard with contribution and expense insights
 - Improved mobile responsiveness across devices
@@ -286,14 +336,11 @@ The amount is enforced by the backend rather than trusted from the frontend.
 
 ## Lessons Learned
 
-Building this project provided practical experience with:
-
-
-* Cloud Functions
-* Payment gateway integrations
-* Payment verification workflows
-* Idempotent transaction handling
-* Deploying production applications
+* Cloud Functions and serverless architecture
+* Integrating a payment gateway without API key access
+* HMAC-based webhook signature verification
+* Idempotent transaction handling in Firestore
+* Deploying production applications on Firebase
 
 ---
 
@@ -301,28 +348,10 @@ Building this project provided practical experience with:
 
 Contributions are welcome.
 
-If you would like to improve the project:
-
 1. Fork the repository
-2. Create a feature branch
-
-```bash
-git checkout -b feature/my-feature
-```
-
-3. Commit your changes
-
-```bash
-git commit -m "Add my feature"
-```
-
-4. Push to your branch
-
-```bash
-git push origin feature/my-feature
-```
-
-5. Open a Pull Request
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Commit your changes: `git commit -m "Add my feature"`
+4. Push and open a Pull Request
 
 Please keep contributions focused, well-documented, and aligned with the project's scope.
 
@@ -332,11 +361,8 @@ Please keep contributions focused, well-documented, and aligned with the project
 
 This project was built for a private college class and is not intended to operate as a public payment platform.
 
-
 ---
 
 ## License
 
-MIT License
-
-Feel free to use, modify, and learn from this project.
+MIT License. Feel free to use, modify, and learn from this project.
