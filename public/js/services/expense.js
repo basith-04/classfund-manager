@@ -4,6 +4,16 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { db } from "./firebase.js";
 
+function parseExpenseDate(dateString) {
+  const [day, month, year] = dateString.split("/").map(Number)
+
+  if (!day || !month || year === undefined || Number.isNaN(day) || Number.isNaN(month) || Number.isNaN(year)) {
+    return new Date(0)
+  }
+
+  return new Date(2000 + year, month - 1, day)
+}
+
 
 //function returning the total expenses
 export async function get_total_expense() {
@@ -29,10 +39,13 @@ export async function loadExpenses() {
 
   try {
     const querySnapshot = await getDocs(expenseRef);
+    const expenses = querySnapshot.docs
+      .map((doc) => doc.data())
+      .sort((firstExpense, secondExpense) => parseExpenseDate(secondExpense.date) - parseExpenseDate(firstExpense.date))
+
     const tableBody = document.getElementById("class-fund-table")
     tableBody.textContent = ""
-    querySnapshot.forEach((doc) => {
-      const data = doc.data()
+    expenses.forEach((data) => {
 
       const row = document.createElement("tr")
 
